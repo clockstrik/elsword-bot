@@ -64,44 +64,37 @@ async function sendToDiscord(url) {
     let title = $("h1").text().trim();
     title = title.replace("La página de la comunidad de Elsword", "").trim();
 
-    // 📄 obtener hasta 3 párrafos reales
+    // 📄 obtener párrafos reales
     let paragraphs = [];
 
-    $(".article-content p").each((i, el) => {
+    $("p").each((i, el) => {
       let text = $(el).text().trim();
 
       if (
         !text ||
         text.includes("cuenta") ||
         text.includes("CGU") ||
-        text.length < 10
+        text.length < 20
       ) return;
 
       paragraphs.push(text);
-      if (paragraphs.length >= 3) return false;
     });
 
-    const descriptionText = paragraphs.join("\n\n");
+    const descriptionText = paragraphs.slice(0, 3).join("\n\n");
 
     // 🖼️ imagen
     const image = $("img").first().attr("src");
 
-    // 📅 EXTRAER FECHA REAL
-    let rawDate = "";
+    // 📅 EXTRAER FECHA (formato correcto con /)
+    let rawText = $("body").text();
 
-    // intenta sacar la fecha desde el elemento debajo del título
-    rawDate = $("time").text().trim() || $(".date").text().trim();
+    let match = rawText.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/);
 
     let timestamp = new Date();
 
-    if (rawDate) {
-      // ejemplo formato: 29.04.2026, 09:00
-      const match = rawDate.match(/(\d{2})\.(\d{2})\.(\d{4}).*?(\d{2}):(\d{2})/);
-
-      if (match) {
-        const [, day, month, year, hour, minute] = match;
-        timestamp = new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
-      }
+    if (match) {
+      const [, day, month, year, hour, minute] = match;
+      timestamp = new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
     }
 
     await axios.post(WEBHOOK_URL, {
