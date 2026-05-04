@@ -2,7 +2,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const fs = require("fs");
 
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1500992514646212610/__PM2iE7sULRRrtDCgAv0VM4l7HCghW-uysJOBKQGrrCKAPWLKpdEzdaAMcMB823r7FaK";
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1500992514646212610/__PM2iE7sULRRrtDCgAv0VM4l7HCghW-uysJOBKQGrrCKAPWLKpdEzdaAMcMB823r7Fa";
 const BASE_URL = "https://es.elsword.gameforge.com";
 const NEWS_URL = BASE_URL + "/news/archive";
 
