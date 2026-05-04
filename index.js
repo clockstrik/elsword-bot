@@ -1,39 +1,48 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1500984023315382273/k5vGGzVf1qb-P-jdLKeG3F8kdQLq61RS--cU6TEjZftbv40z1XLqCyX6GZpfgjg6QFTt"; // ⚠️ pon tu webhook nuevo aquí
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1500987759089946686/mJgqO929gQH7O84uaJoo7QY6F7KVPvUzKlWR3FMIqCN9Crf1UyToHoasi4qwHalm7j0w"; // ⚠️ cambia por tu webhook
 const BASE_URL = "https://es.elsword.gameforge.com";
-const NEWS_URL = BASE_URL + "/news";
+const NEWS_URL = BASE_URL + "/news/archive";
 
-let lastLink = "";
+// 🔥 guardamos varias noticias ya enviadas
+let sentLinks = [];
 
 async function checkNews() {
   try {
     const res = await axios.get(NEWS_URL);
     const $ = cheerio.load(res.data);
 
-    // 🔍 Buscar links de noticias válidos (evita archive)
-    const link = $("a[href*='/news/']")
+    // 🔍 sacar links reales de noticias
+    const links = $("a[href*='/news/']")
       .map((i, el) => $(el).attr("href"))
       .get()
-      .find(href => href && !href.includes("archive"));
+      .filter(link =>
+        link &&
+        !link.includes("archive") &&
+        !link.includes("category")
+      );
 
-    if (!link) return;
+    // tomar las 5 más recientes
+    const recentLinks = links.slice(0, 5);
 
-    // 🔧 Arregla links relativos vs completos
-    let fullLink = link;
-    if (!link.startsWith("http")) {
-      fullLink = BASE_URL + link;
+    for (let link of recentLinks) {
+
+      // 🔧 arreglar link relativo
+      let fullLink = link;
+      if (!link.startsWith("http")) {
+        fullLink = BASE_URL + link;
+      }
+
+      // ❌ evitar repetir
+      if (sentLinks.includes(fullLink)) continue;
+
+      sentLinks.push(fullLink);
+
+      console.log("Nueva noticia:", fullLink);
+
+      await sendToDiscord(fullLink);
     }
-
-    // ❌ evitar repetir
-    if (fullLink === lastLink) return;
-
-    lastLink = fullLink;
-
-    console.log("Nueva noticia:", fullLink);
-
-    await sendToDiscord(fullLink);
 
   } catch (e) {
     console.log("Error revisando noticias:", e.message);
@@ -53,7 +62,7 @@ async function sendToDiscord(url) {
       if (text) content += "• " + text + "\n";
     });
 
-    // fallback si no encuentra esa clase
+    // fallback
     if (!content) {
       $("p").each((i, el) => {
         const text = $(el).text().trim();
