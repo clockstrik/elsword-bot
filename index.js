@@ -2,11 +2,10 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const fs = require("fs");
 
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1500992514646212610/__PM2iE7sULRRrtDCgAv0VM4l7HCghW-uysJOBKQGrrCKAPWLKpdEzdaAMcMB823r7Fa";
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1500996393383497921/CPtH0xGB67g8TyVlj7b8wdoQFzTwLrtF6d28rda_dUlcvyc40m43OKrQ5Uj_AbJ6y7xD";
 const BASE_URL = "https://es.elsword.gameforge.com";
 const NEWS_URL = BASE_URL + "/news/archive";
 
-// 📁 archivo donde guardamos historial
 const FILE = "sent.json";
 
 // cargar historial
@@ -62,26 +61,26 @@ async function sendToDiscord(url) {
     const res = await axios.get(url);
     const $ = cheerio.load(res.data);
 
-    const title = $("h1").text().trim();
+    // 🧹 limpiar título
+    let title = $("h1").text().trim();
+    title = title.replace("La página de la comunidad de Elsword", "").trim();
 
-    let lines = [];
+    // 📄 obtener primer párrafo limpio
+    let firstParagraph = "";
 
-    $(".article-content p, .article-content li").each((i, el) => {
+    $(".article-content p").each((i, el) => {
       let text = $(el).text().trim();
 
-      // ❌ eliminar basura
       if (
         !text ||
         text.includes("cuenta") ||
         text.includes("CGU") ||
-        text.length < 5
+        text.length < 10
       ) return;
 
-      lines.push("• " + text);
+      firstParagraph = text;
+      return false;
     });
-
-    // ✂️ limitar contenido (máx 10 líneas)
-    const content = lines.slice(0, 10).join("\n");
 
     const image = $("img").first().attr("src");
 
@@ -89,7 +88,9 @@ async function sendToDiscord(url) {
       embeds: [{
         title: title,
         url: url,
-        description: content || "Ver más en el enlace",
+        description: firstParagraph
+          ? `${firstParagraph}\n\n[Ver más en el enlace](${url})`
+          : `[Ver más en el enlace](${url})`,
         image: image ? { url: image } : undefined,
         color: 16753920,
         footer: { text: "Elsword EU News" },
