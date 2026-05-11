@@ -5,7 +5,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const fs = require("fs");
 
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1503499084550508645/GSZQAnwAzM04l3bLAY9fPU1x5fwl2TwQHFWR8AwTZcX7-P_Ro4cTQIzXkDQ_BbhownIh";
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1503501185338970153/Hem6j7b2zsyUspZ8GxcFxjqXa2u53j4Lsim_BKn9ZZyoUFjS6u2OYDdEpnHEdNo0rZir";
 const BASE_URL = "https://es.elsword.gameforge.com";
 const NEWS_URL = BASE_URL + "/news/archive";
 
@@ -28,14 +28,15 @@ async function checkNews() {
     const res = await axios.get(NEWS_URL);
     const $ = cheerio.load(res.data);
 
-    const links = $("a[href*='/news/']")
-      .map((i, el) => $(el).attr("href"))
-      .get()
-      .filter(link =>
-        link &&
-        !link.includes("archive") &&
-        !link.includes("category")
-      );
+const links = [...new Set(
+  $("a[href*='/news/article/']")
+    .map((i, el) => $(el).attr("href"))
+    .get()
+)].filter(link =>
+  link &&
+  !link.includes("archive") &&
+  !link.includes("category")
+);
 
 const recentLinks = links.slice(0, 5);
 
