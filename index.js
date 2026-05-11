@@ -5,7 +5,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const fs = require("fs");
 
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1503491823690059896/mv6j6P5BccfLiR4RXooY5aci8fsJ-U7i1QKS1IXIZZMBWSKUSElEibr9OTiYTIRYwVmN";
+const WEBHOOK_URL = "https://discord.com/api/webhooks/1503499084550508645/GSZQAnwAzM04l3bLAY9fPU1x5fwl2TwQHFWR8AwTZcX7-P_Ro4cTQIzXkDQ_BbhownIh";
 const BASE_URL = "https://es.elsword.gameforge.com";
 const NEWS_URL = BASE_URL + "/news/archive";
 
@@ -37,25 +37,65 @@ async function checkNews() {
         !link.includes("category")
       );
 
-    const recentLinks = links.slice(0, 5);
+const recentLinks = links.slice(0, 5);
 
-    for (let link of recentLinks) {
+let newsData = [];
 
-      let fullLink = link;
+for (let link of recentLinks) {
 
-      if (!link.startsWith("http")) {
-        fullLink = BASE_URL + link;
-      }
+  let fullLink = link;
 
-      if (sentLinks.includes(fullLink)) continue;
+  if (!link.startsWith("http")) {
+    fullLink = BASE_URL + link;
+  }
 
-      sentLinks.push(fullLink);
-      saveLinks();
+  if (sentLinks.includes(fullLink)) continue;
 
-      console.log("Nueva noticia:", fullLink);
+  try {
 
-      await sendToDiscord(fullLink);
+    const articleRes = await axios.get(fullLink);
+    const article$ = cheerio.load(articleRes.data);
+
+    let rawText = article$("body").text();
+
+    let match = rawText.match(
+      /(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/
+    );
+
+    let timestamp = new Date();
+
+    if (match) {
+
+      const [, day, month, year, hour, minute] = match;
+
+      timestamp = new Date(
+        `${year}-${month}-${day}T${hour}:${minute}:00`
+      );
     }
+
+    newsData.push({
+      url: fullLink,
+      timestamp: timestamp
+    });
+
+  } catch (e) {
+    console.log("Error obteniendo fecha:", e.message);
+  }
+}
+
+// ordenar noticias por fecha REAL
+newsData.sort((a, b) => a.timestamp - b.timestamp);
+
+// enviar noticias en orden correcto
+for (const news of newsData) {
+
+  sentLinks.push(news.url);
+  saveLinks();
+
+  console.log("Nueva noticia:", news.url);
+
+  await sendToDiscord(news.url);
+}
 
   } catch (e) {
     console.log("Error revisando noticias:", e.message);
