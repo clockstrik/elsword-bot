@@ -1,8 +1,11 @@
+const express = require("express");
+const app = express();
+
 const axios = require("axios");
 const cheerio = require("cheerio");
 const fs = require("fs");
 
-const WEBHOOK_URL = "https://discord.com/api/webhooks/1500999396186132551/PfXccRF1Wnt2Z5O1INvI5deG-D9wPT21szN_7aTqzXsjWqUzYMZYq5eT8333gABG7nSC";
+const WEBHOOK_URL = "TU_WEBHOOK";
 const BASE_URL = "https://es.elsword.gameforge.com";
 const NEWS_URL = BASE_URL + "/news/archive";
 
@@ -36,6 +39,7 @@ async function checkNews() {
     for (let link of recentLinks) {
 
       let fullLink = link;
+
       if (!link.startsWith("http")) {
         fullLink = BASE_URL + link;
       }
@@ -85,7 +89,7 @@ async function sendToDiscord(url) {
     // 🖼️ imagen
     const image = $("img").first().attr("src");
 
-    // 📅 EXTRAER FECHA (formato correcto con /)
+    // 📅 EXTRAER FECHA
     let rawText = $("body").text();
 
     let match = rawText.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/);
@@ -118,7 +122,17 @@ async function sendToDiscord(url) {
   }
 }
 
-// ⏱️ cada 10 minutos
+// ⏱️ Revisar cada 10 minutos
 setInterval(checkNews, 600000);
 
 checkNews();
+
+// 🌐 Servidor web para Render
+app.get("/", (req, res) => {
+  res.send("Bot funcionando");
+});
+
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Servidor web activo");
+});
+```
