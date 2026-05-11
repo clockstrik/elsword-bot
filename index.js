@@ -12,6 +12,7 @@ const NEWS_URL = BASE_URL + "/news/archive";
 const FILE = "sent.json";
 
 let sentLinks = [];
+
 if (fs.existsSync(FILE)) {
   sentLinks = JSON.parse(fs.readFileSync(FILE));
 }
@@ -21,7 +22,9 @@ function saveLinks() {
 }
 
 async function checkNews() {
+
   try {
+
     const res = await axios.get(NEWS_URL);
     const $ = cheerio.load(res.data);
 
@@ -60,18 +63,23 @@ async function checkNews() {
 }
 
 async function sendToDiscord(url) {
+
   try {
+
     const res = await axios.get(url);
     const $ = cheerio.load(res.data);
 
-    // 🧹 limpiar título
     let title = $("h1").text().trim();
-    title = title.replace("La página de la comunidad de Elsword", "").trim();
 
-    // 📄 obtener párrafos reales
+    title = title.replace(
+      "La página de la comunidad de Elsword",
+      ""
+    ).trim();
+
     let paragraphs = [];
 
     $("p").each((i, el) => {
+
       let text = $(el).text().trim();
 
       if (
@@ -82,52 +90,73 @@ async function sendToDiscord(url) {
       ) return;
 
       paragraphs.push(text);
+
     });
 
-    const descriptionText = paragraphs.slice(0, 3).join("\n\n");
+    const descriptionText = paragraphs
+      .slice(0, 3)
+      .join("\n\n");
 
-    // 🖼️ imagen
     const image = $("img").first().attr("src");
 
-    // 📅 EXTRAER FECHA
     let rawText = $("body").text();
 
-    let match = rawText.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/);
+    let match = rawText.match(
+      /(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/
+    );
 
     let timestamp = new Date();
 
     if (match) {
+
       const [, day, month, year, hour, minute] = match;
-      timestamp = new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
+
+      timestamp = new Date(
+        `${year}-${month}-${day}T${hour}:${minute}:00`
+      );
     }
 
     await axios.post(WEBHOOK_URL, {
+
       embeds: [{
+
         title: title,
         url: url,
+
         description: descriptionText
           ? `${descriptionText}\n\n[Ver más en el enlace](${url})`
           : `[Ver más en el enlace](${url})`,
-        image: image ? { url: image } : undefined,
+
+        image: image
+          ? { url: image }
+          : undefined,
+
         color: 16753920,
-        footer: { text: "Elsword EU News" },
+
+        footer: {
+          text: "Elsword EU News"
+        },
+
         timestamp: timestamp
+
       }]
     });
 
     console.log("Noticia enviada a Discord");
 
   } catch (e) {
-    console.log("Error enviando a Discord:", e.message);
+
+    console.log(
+      "Error enviando a Discord:",
+      e.message
+    );
   }
 }
 
-// ⏱️ Revisar cada 10 minutos
 setInterval(checkNews, 600000);
 
 checkNews();
 
-// 🌐 Servidor web para Render
 app.get("/", (req, res) => {
   res.send("Bot funcionando");
 });
@@ -135,4 +164,3 @@ app.get("/", (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor web activo");
 });
-```
