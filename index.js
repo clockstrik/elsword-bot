@@ -14,14 +14,17 @@ const FILE = "sent.json";
 let sentLinks = [];
 let checkingNews = false;
 
+// cargar noticias ya enviadas
 if (fs.existsSync(FILE)) {
   sentLinks = JSON.parse(fs.readFileSync(FILE));
 }
 
+// guardar noticias enviadas
 function saveLinks() {
   fs.writeFileSync(FILE, JSON.stringify(sentLinks, null, 2));
 }
 
+// revisar noticias
 async function checkNews() {
 
   if (checkingNews) {
@@ -41,6 +44,7 @@ async function checkNews() {
 
     const $ = cheerio.load(res.data);
 
+    // obtener links únicos
     const links = [...new Set(
       $("a[href*='/news/article/']")
         .map((i, el) => $(el).attr("href"))
@@ -55,6 +59,7 @@ async function checkNews() {
 
     let newsData = [];
 
+    // obtener fechas reales
     for (let link of recentLinks) {
 
       let fullLink = link;
@@ -96,7 +101,11 @@ async function checkNews() {
         });
 
       } catch (e) {
-        console.log("Error obteniendo fecha:", e.message);
+
+        console.log(
+          "Error obteniendo fecha:",
+          e.message
+        );
       }
     }
 
@@ -116,7 +125,10 @@ async function checkNews() {
 
   } catch (e) {
 
-    console.log("Error revisando noticias:", e.message);
+    console.log(
+      "Error revisando noticias:",
+      e.message
+    );
 
   } finally {
 
@@ -124,34 +136,18 @@ async function checkNews() {
   }
 }
 
-// ordenar noticias por fecha REAL
-newsData.sort((a, b) => a.timestamp - b.timestamp);
-
-// enviar noticias en orden correcto
-for (const news of newsData) {
-
-  sentLinks.push(news.url);
-  saveLinks();
-
-  console.log("Nueva noticia:", news.url);
-
-  await sendToDiscord(news.url);
-}
-
-  } catch (e) {
-    console.log("Error revisando noticias:", e.message);
-  }
-}
-
+// enviar a discord
 async function sendToDiscord(url) {
 
   try {
 
     const res = await axios.get(url, {
-  timeout: 15000
-});
+      timeout: 15000
+    });
+
     const $ = cheerio.load(res.data);
 
+    // título
     let title = $("h1").text().trim();
 
     title = title.replace(
@@ -159,6 +155,7 @@ async function sendToDiscord(url) {
       ""
     ).trim();
 
+    // descripción
     let paragraphs = [];
 
     $("p").each((i, el) => {
@@ -173,15 +170,16 @@ async function sendToDiscord(url) {
       ) return;
 
       paragraphs.push(text);
-
     });
 
     const descriptionText = paragraphs
       .slice(0, 3)
       .join("\n\n");
 
+    // imagen
     const image = $("img").first().attr("src");
 
+    // fecha
     let rawText = $("body").text();
 
     let match = rawText.match(
@@ -199,6 +197,7 @@ async function sendToDiscord(url) {
       );
     }
 
+    // enviar embed
     await axios.post(WEBHOOK_URL, {
 
       embeds: [{
@@ -236,16 +235,22 @@ async function sendToDiscord(url) {
   }
 }
 
+// revisar cada 2 minutos
 setInterval(async () => {
 
-  console.log("Revisando noticias:", new Date());
+  console.log(
+    "Revisando noticias:",
+    new Date()
+  );
 
   await checkNews();
 
 }, 120000);
 
+// primera ejecución
 checkNews();
 
+// servidor express
 app.get("/", (req, res) => {
   res.send("Bot funcionando");
 });
@@ -254,6 +259,7 @@ app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor web activo");
 });
 
+// evitar crashes silenciosos
 process.on("unhandledRejection", (reason) => {
   console.log("Unhandled Rejection:", reason);
 });
