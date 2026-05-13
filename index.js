@@ -25,7 +25,9 @@ async function checkNews() {
 
   try {
 
-    const res = await axios.get(NEWS_URL);
+    const res = await axios.get(NEWS_URL, {
+  timeout: 15000
+    });
     const $ = cheerio.load(res.data);
 
 const links = [...new Set(
@@ -54,7 +56,9 @@ for (let link of recentLinks) {
 
   try {
 
-    const articleRes = await axios.get(fullLink);
+    const articleRes = await axios.get(fullLink, {
+  timeout: 15000
+    });
     const article$ = cheerio.load(articleRes.data);
 
     let rawText = article$("body").text();
@@ -194,7 +198,13 @@ async function sendToDiscord(url) {
   }
 }
 
-setInterval(checkNews, 600000);
+setInterval(async () => {
+
+  console.log("Revisando noticias:", new Date());
+
+  await checkNews();
+
+}, 120000);
 
 checkNews();
 
@@ -204,4 +214,12 @@ app.get("/", (req, res) => {
 
 app.listen(process.env.PORT || 3000, () => {
   console.log("Servidor web activo");
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.log("Unhandled Rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.log("Uncaught Exception:", err);
 });
