@@ -12,6 +12,7 @@ const NEWS_URL = BASE_URL + "/news/archive";
 const FILE = "sent.json";
 
 let sentLinks = [];
+let checkingNews = false;
 
 if (fs.existsSync(FILE)) {
   sentLinks = JSON.parse(fs.readFileSync(FILE));
@@ -23,68 +24,103 @@ function saveLinks() {
 
 async function checkNews() {
 
-  try {
-
-    const res = await axios.get(NEWS_URL, {
-  timeout: 15000
-    });
-    const $ = cheerio.load(res.data);
-
-const links = [...new Set(
-  $("a[href*='/news/article/']")
-    .map((i, el) => $(el).attr("href"))
-    .get()
-)].filter(link =>
-  link &&
-  !link.includes("archive") &&
-  !link.includes("category")
-);
-
-const recentLinks = links.slice(0, 5);
-
-let newsData = [];
-
-for (let link of recentLinks) {
-
-  let fullLink = link;
-
-  if (!link.startsWith("http")) {
-    fullLink = BASE_URL + link;
+  if (checkingNews) {
+    console.log("Ya hay una revisión en proceso");
+    return;
   }
 
-  if (sentLinks.includes(fullLink)) continue;
+  checkingNews = true;
 
   try {
 
-    const articleRes = await axios.get(fullLink, {
-  timeout: 15000
+    console.log("Buscando noticias...");
+
+    const res = await axios.get(NEWS_URL, {
+      timeout: 15000
     });
-    const article$ = cheerio.load(articleRes.data);
 
-    let rawText = article$("body").text();
+    const $ = cheerio.load(res.data);
 
-    let match = rawText.match(
-      /(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/
+    const links = [...new Set(
+      $("a[href*='/news/article/']")
+        .map((i, el) => $(el).attr("href"))
+        .get()
+    )].filter(link =>
+      link &&
+      !link.includes("archive") &&
+      !link.includes("category")
     );
 
-    let timestamp = new Date();
+    const recentLinks = links.slice(0, 5);
 
-    if (match) {
+    let newsData = [];
 
-      const [, day, month, year, hour, minute] = match;
+    for (let link of recentLinks) {
 
-      timestamp = new Date(
-        `${year}-${month}-${day}T${hour}:${minute}:00`
-      );
+      let fullLink = link;
+
+      if (!link.startsWith("http")) {
+        fullLink = BASE_URL + link;
+      }
+
+      if (sentLinks.includes(fullLink)) continue;
+
+      try {
+
+        const articleRes = await axios.get(fullLink, {
+          timeout: 15000
+        });
+
+        const article$ = cheerio.load(articleRes.data);
+
+        let rawText = article$("body").text();
+
+        let match = rawText.match(
+          /(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/
+        );
+
+        let timestamp = new Date();
+
+        if (match) {
+
+          const [, day, month, year, hour, minute] = match;
+
+          timestamp = new Date(
+            `${year}-${month}-${day}T${hour}:${minute}:00`
+          );
+        }
+
+        newsData.push({
+          url: fullLink,
+          timestamp: timestamp
+        });
+
+      } catch (e) {
+        console.log("Error obteniendo fecha:", e.message);
+      }
     }
 
-    newsData.push({
-      url: fullLink,
-      timestamp: timestamp
-    });
+    // ordenar por fecha real
+    newsData.sort((a, b) => a.timestamp - b.timestamp);
+
+    // enviar noticias
+    for (const news of newsData) {
+
+      sentLinks.push(news.url);
+      saveLinks();
+
+      console.log("Nueva noticia:", news.url);
+
+      await sendToDiscord(news.url);
+    }
 
   } catch (e) {
-    console.log("Error obteniendo fecha:", e.message);
+
+    console.log("Error revisando noticias:", e.message);
+
+  } finally {
+
+    checkingNews = false;
   }
 }
 
@@ -111,7 +147,9 @@ async function sendToDiscord(url) {
 
   try {
 
-    const res = await axios.get(url);
+    const res = await axios.get(url, {
+  timeout: 15000
+});
     const $ = cheerio.load(res.data);
 
     let title = $("h1").text().trim();
