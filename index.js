@@ -13,7 +13,6 @@ const FILE = "sent.json";
 
 let sentLinks = [];
 let checkingNews = false;
-let firstRun = true;
 
 // cargar noticias ya enviadas
 if (fs.existsSync(FILE)) {
@@ -119,17 +118,6 @@ for (const news of newsData) {
   sentLinks.push(news.url);
   saveLinks();
 
-  // evitar reenviar noticias viejas
-  if (firstRun) {
-
-    console.log(
-      "Saltando noticia antigua:",
-      news.url
-    );
-
-    continue;
-  }
-
   console.log("Nueva noticia:", news.url);
 
   await sendToDiscord(news.url);
@@ -145,7 +133,6 @@ for (const news of newsData) {
   } finally {
 
     checkingNews = false;
-    firstRun = false;
   }
 }
 
