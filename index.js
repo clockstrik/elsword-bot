@@ -13,6 +13,7 @@ const FILE = "sent.json";
 
 let sentLinks = [];
 let checkingNews = false;
+let firstRun = true;
 
 // cargar noticias ya enviadas
 if (fs.existsSync(FILE)) {
@@ -55,7 +56,7 @@ async function checkNews() {
       !link.includes("category")
     );
 
-    const recentLinks = links.slice(0, 5);
+    const recentLinks = links.slice(0, 10);
 
     let newsData = [];
 
@@ -113,15 +114,26 @@ async function checkNews() {
     newsData.sort((a, b) => a.timestamp - b.timestamp);
 
     // enviar noticias
-    for (const news of newsData) {
+for (const news of newsData) {
 
-      sentLinks.push(news.url);
-      saveLinks();
+  sentLinks.push(news.url);
+  saveLinks();
 
-      console.log("Nueva noticia:", news.url);
+  // evitar reenviar noticias viejas
+  if (firstRun) {
 
-      await sendToDiscord(news.url);
-    }
+    console.log(
+      "Saltando noticia antigua:",
+      news.url
+    );
+
+    continue;
+  }
+
+  console.log("Nueva noticia:", news.url);
+
+  await sendToDiscord(news.url);
+}
 
   } catch (e) {
 
@@ -133,6 +145,7 @@ async function checkNews() {
   } finally {
 
     checkingNews = false;
+    firstRun = false;
   }
 }
 
@@ -177,7 +190,28 @@ async function sendToDiscord(url) {
       .join("\n\n");
 
     // imagen
-    const image = $("img").first().attr("src");
+    let image;
+
+const images = $("img")
+  .map((i, el) => $(el).attr("src"))
+  .get()
+  .filter(src =>
+    src &&
+    src.startsWith("http")
+  );
+
+// shopupdate usa segunda imagen
+if (
+  title.toLowerCase().includes("shopupdate") &&
+  images.length > 1
+) {
+
+  image = images[1];
+
+} else {
+
+  image = images[0];
+}
 
     // fecha
     let rawText = $("body").text();
